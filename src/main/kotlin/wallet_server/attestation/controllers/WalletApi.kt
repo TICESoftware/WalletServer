@@ -3,7 +3,8 @@ package wallet_server.attestation.controllers
 import org.springframework.web.bind.annotation.*
 import wallet_server.attestation.requests.AttestationRequest
 import wallet_server.attestation.requests.NonceRequest
-import wallet_server.attestation.types.*
+import wallet_server.attestation.responses.AttestationResponse
+import wallet_server.attestation.responses.NonceResponse
 
 @RestController
 @RequestMapping("api/attestation")
