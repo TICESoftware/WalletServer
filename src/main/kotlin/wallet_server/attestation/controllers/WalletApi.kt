@@ -5,19 +5,20 @@ import wallet_server.attestation.requests.AttestationRequest
 import wallet_server.attestation.requests.NonceRequest
 import wallet_server.attestation.responses.AttestationResponse
 import wallet_server.attestation.responses.NonceResponse
+import wallet_server.attestation.services.WalletApiService
 
 @RestController
 @RequestMapping("api/attestation")
-class WalletApi {
+
+class WalletApi(val walletApiService: WalletApiService) {
 
     @PostMapping("/nonces")
     fun requestNonces(@RequestBody request: NonceRequest): NonceResponse {
-        val nonces = listOf("nonce1", "nonce2", "nonce3")
-        return NonceResponse(nonces)
+        return walletApiService.requestNonces(request.walletInstanceId)
     }
 
     @PostMapping("/request")
     fun requestAttestation(@RequestBody request: AttestationRequest): AttestationResponse {
-        return AttestationResponse(walletAttestation = "testWalletAttestation")
+        return walletApiService.requestAttestation(request)
     }
 }
