@@ -8,7 +8,7 @@ import wallet_server.attestation.responses.NonceResponse
 import wallet_server.attestation.services.WalletApiService
 
 @RestController
-@RequestMapping("api/attestation")
+@RequestMapping("attestation")
 
 class WalletApi(val walletApiService: WalletApiService) {
 
