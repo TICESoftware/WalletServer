@@ -9,6 +9,6 @@ data class UserEntity(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long?,
     var walletInstanceId: String,
-    var firstNonce: String?,
-    var secondNonce: String?
+    var popNonce: String?,
+    var keyAttestationNonce: String?
 )

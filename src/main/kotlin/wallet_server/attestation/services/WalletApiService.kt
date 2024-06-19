@@ -22,22 +22,20 @@ class WalletApiService @Autowired constructor(
     private val privateKey: String? = dotenv["PRIVATE_KEY"]
 
     fun requestNonces(walletInstanceId: String): NonceResponse {
-        val nonces = List(2) { java.util.UUID.randomUUID().toString() }
+        val (popNonce, keyAttestationNonce) = List(2) { java.util.UUID.randomUUID().toString() }
 
         val user = UserEntity(
             walletInstanceId = walletInstanceId,
-            firstNonce = nonces[0],
-            secondNonce = nonces[1],
+            popNonce = popNonce,
+            keyAttestationNonce = keyAttestationNonce,
             id = null
         )
 
         userRepository.save(user)
-        return NonceResponse(nonces)
+        return NonceResponse(popNonce = popNonce, keyAttestationNonce = keyAttestationNonce )
     }
 
     fun requestAttestation(requestAttestation: AttestationRequest): AttestationResponse {
-        print( privateKey)
-
         val pem = privateKey
             ?.replace("-----BEGIN PRIVATE KEY-----", "")
             ?.replace("-----END PRIVATE KEY-----", "")
