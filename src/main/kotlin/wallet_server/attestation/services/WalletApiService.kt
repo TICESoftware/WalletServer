@@ -35,7 +35,7 @@ class WalletApiService @Autowired constructor(
         return NonceResponse(popNonce = popNonce, keyAttestationNonce = keyAttestationNonce )
     }
 
-    fun requestAttestation(requestAttestation: AttestationRequest): AttestationResponse {
+    fun requestAttestation(requestAttestation: AttestationRequest, id: String): AttestationResponse {
         val pem = privateKey
             ?.replace("-----BEGIN PRIVATE KEY-----", "")
             ?.replace("-----END PRIVATE KEY-----", "")

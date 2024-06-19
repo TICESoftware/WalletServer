@@ -17,8 +17,11 @@ class WalletApi(val walletApiService: WalletApiService) {
         return walletApiService.requestNonces(request.walletInstanceId)
     }
 
-    @PostMapping("/request")
-    fun requestAttestation(@RequestBody request: AttestationRequest): AttestationResponse {
-        return walletApiService.requestAttestation(request)
+    @PostMapping("/request/{id}")
+    fun requestAttestation(
+        @RequestBody request: AttestationRequest,
+        @PathVariable id: String
+    ): AttestationResponse {
+        return walletApiService.requestAttestation(request, id)
     }
 }
