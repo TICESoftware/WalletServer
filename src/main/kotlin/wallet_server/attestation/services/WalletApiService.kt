@@ -12,15 +12,14 @@ import wallet_server.attestation.responses.NonceResponse
 import java.security.KeyFactory
 import java.security.spec.PKCS8EncodedKeySpec
 import java.util.*
+import wallet_server.attestation.config.EnvironmentConfig
 
 @Service
 class WalletApiService @Autowired constructor(
     private val userRepository: UserRepository,
+    private val environmentConfig: EnvironmentConfig
 
 ) {
-    private val dotenv: Dotenv = Dotenv.load()
-    private val privateKey: String? = dotenv["PRIVATE_KEY"]
-
     fun requestNonces(walletInstanceId: String): NonceResponse {
         val (popNonce, keyAttestationNonce) = List(2) { java.util.UUID.randomUUID().toString() }
 
@@ -36,6 +35,7 @@ class WalletApiService @Autowired constructor(
     }
 
     fun requestAttestation(requestAttestation: AttestationRequest, id: String): AttestationResponse {
+        val privateKey = environmentConfig.getPrivateKey()
         val pem = privateKey
             ?.replace("-----BEGIN PRIVATE KEY-----", "")
             ?.replace("-----END PRIVATE KEY-----", "")
