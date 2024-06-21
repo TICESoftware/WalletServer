@@ -10,7 +10,11 @@ import software.tice.wallet.attestation.requests.AttestationRequest
 import software.tice.wallet.attestation.responses.AttestationResponse
 import software.tice.wallet.attestation.responses.NonceResponse
 import java.security.KeyFactory
+import java.security.PrivateKey
+import java.security.PublicKey
+import java.security.Signature
 import java.security.spec.PKCS8EncodedKeySpec
+import java.security.spec.X509EncodedKeySpec
 import java.util.*
 
 @Service
@@ -30,7 +34,19 @@ class WalletApiService @Autowired constructor(
             id = null
         )
 
-        userRepository.save(user)
+        if (existingWallet != null) {
+            existingWallet.popNonce = popNonce
+            existingWallet.keyAttestationNonce = keyAttestationNonce
+            walletRepository.save(existingWallet)
+        } else {
+            val newWallet = WalletEntity(
+                walletId = walletId,
+                popNonce = popNonce,
+                keyAttestationNonce = keyAttestationNonce,
+                id = null
+            )
+            walletRepository.save(newWallet)
+        }
         return NonceResponse(popNonce = popNonce, keyAttestationNonce = keyAttestationNonce )
     }
 
@@ -40,13 +56,67 @@ class WalletApiService @Autowired constructor(
             .replace("-----BEGIN PRIVATE KEY-----", "")
             .replace("-----END PRIVATE KEY-----", "")
 
-        val decodedKey = Base64.getDecoder().decode(pem)
+        val existingWallet = walletRepository.findByWalletId(walletId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found")
 
-        val keySpec = PKCS8EncodedKeySpec(decodedKey)
-        val keyFactory = KeyFactory.getInstance("EC")
-        val privateKeyReloaded = keyFactory.generatePrivate(keySpec)
+        // <--- Start: check the PoP --->
+        val publicKey: PublicKey = decodePublicKey(requestAttestation.attestationPublicKey)
+        val parts = requestAttestation.proofOfPossession.split(":")
+        if (parts.size != 2) {
+            throw IllegalArgumentException("Expected format 'nonce:signature'")
+        }
+        val (nonce, signatureBytes) = parts.map { Base64.getDecoder().decode(it) }
 
-        val walletAttestation: String = Jwts.builder().subject("Joe").signWith(privateKeyReloaded).compact()
+        val signature = Signature.getInstance("SHA256withECDSA")
+        signature.initVerify(publicKey)
+        signature.update(nonce)
+
+        val isSignatureValid = signature.verify(signatureBytes)
+        if (!isSignatureValid) {
+            throw SecurityException("Invalid signature")
+        }
+
+        // <--- End: check the PoP --->
+
+        // <--- End: check the request --->
+
+
+
+        // <--- Start: throw away nonces and create random ID --->
+        existingWallet.popNonce = null
+        existingWallet.keyAttestationNonce = null
+        walletRepository.save(existingWallet)
+
+        val randomId: String = UUID.randomUUID().toString()
+        // <--- End: throw away nonces and create random ID --->
+
+
+        // <--- Start: create walletAttestation --->
+        val privateKey = privateKey?.let { decodePrivateKey(it) }
+
+        val walletAttestation: String = Jwts.builder().subject("Joe").claim("publicKey", requestAttestation.attestationPublicKey).claim("randomId", randomId).signWith(privateKey).compact()
+        // <--- End: create walletAttestation --->
+
         return AttestationResponse(walletAttestation)
+    }
+
+    fun decodePublicKey(key: String): PublicKey {
+        val pem = key
+            .replace("-----BEGIN PUBLIC KEY-----", "")
+            .replace("-----END PUBLIC KEY-----", "")
+        val keyBytes = Base64.getDecoder().decode(pem)
+        val keySpec = X509EncodedKeySpec(keyBytes)
+        val keyFactory = KeyFactory.getInstance("EC")
+        return keyFactory.generatePublic(keySpec)
+    }
+
+    fun decodePrivateKey(key: String): PrivateKey {
+        val pem = key
+            .replace("-----BEGIN PRIVATE KEY-----", "")
+            .replace("-----END PRIVATE KEY-----", "")
+        val keyBytes = Base64.getDecoder().decode(pem)
+        val keySpec = PKCS8EncodedKeySpec(keyBytes)
+        val keyFactory = KeyFactory.getInstance("EC")
+       return  keyFactory.generatePrivate(keySpec)
     }
 }
