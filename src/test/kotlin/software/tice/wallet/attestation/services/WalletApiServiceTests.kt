@@ -5,8 +5,8 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.*
 import org.mockito.Mockito.verify
-import software.tice.wallet.attestation.repositories.UserEntity
-import software.tice.wallet.attestation.repositories.UserRepository
+import software.tice.wallet.attestation.repositories.WalletEntity
+import software.tice.wallet.attestation.repositories.WalletRepository
 import software.tice.wallet.attestation.requests.AttestationRequest
 import java.security.KeyPair
 import java.util.*
@@ -16,14 +16,14 @@ import kotlin.test.assertEquals
 internal class WalletApiServiceTests {
 
     @Mock
-    private lateinit var userRepository: UserRepository
+    private lateinit var userRepository: WalletRepository
 
     private lateinit var privateKey: String
 
     private lateinit var walletApiService: WalletApiService
 
     @Captor
-    private lateinit var userCaptor: ArgumentCaptor<UserEntity>
+    private lateinit var userCaptor: ArgumentCaptor<WalletEntity>
 
     private val keyPair: KeyPair = Jwts.SIG.ES256.keyPair().build()
 
@@ -43,7 +43,7 @@ internal class WalletApiServiceTests {
 
         verify(userRepository).save(userCaptor.capture())
         val savedUser = userCaptor.value
-        assertEquals(walletInstanceId, savedUser.walletInstanceId)
+        assertEquals(walletInstanceId, savedUser.walletId)
         assertEquals(response.popNonce, savedUser.popNonce)
         assertEquals(response.keyAttestationNonce, savedUser.keyAttestationNonce)
     }

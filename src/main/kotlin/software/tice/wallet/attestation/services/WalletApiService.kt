@@ -4,8 +4,8 @@ import io.jsonwebtoken.Jwts
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
-import software.tice.wallet.attestation.repositories.UserEntity
-import software.tice.wallet.attestation.repositories.UserRepository
+import software.tice.wallet.attestation.repositories.WalletEntity
+import software.tice.wallet.attestation.repositories.WalletRepository
 import software.tice.wallet.attestation.requests.AttestationRequest
 import software.tice.wallet.attestation.responses.AttestationResponse
 import software.tice.wallet.attestation.responses.NonceResponse
@@ -17,14 +17,14 @@ import java.util.*
 class WalletApiService @Autowired constructor(
     @Value("\${private.key}")
     private val privateKey: String,
-    private val userRepository: UserRepository,
+    private val userRepository: WalletRepository,
 
 ) {
     fun requestNonces(walletInstanceId: String): NonceResponse {
         val (popNonce, keyAttestationNonce) = List(2) { UUID.randomUUID().toString() }
 
-        val user = UserEntity(
-            walletInstanceId = walletInstanceId,
+        val user = WalletEntity(
+            walletId = walletInstanceId,
             popNonce = popNonce,
             keyAttestationNonce = keyAttestationNonce,
             id = null
