@@ -57,7 +57,7 @@ class WalletApiService @Autowired constructor(
             .replace("-----END PRIVATE KEY-----", "")
 
         val existingWallet = walletRepository.findByWalletId(walletId)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found")
+            ?: throw WalletNotFoundException("Wallet with id ${walletId} not found")
 
         // <--- Start: check the PoP --->
         val publicKey: PublicKey = decodePublicKey(requestAttestation.attestationPublicKey)
