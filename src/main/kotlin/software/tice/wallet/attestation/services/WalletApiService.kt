@@ -1,5 +1,9 @@
 package software.tice.wallet.attestation.services
 
+import io.github.cdimascio.dotenv.Dotenv
+import io.jsonwebtoken.Claims
+import io.jsonwebtoken.Jws
+import io.jsonwebtoken.JwtException
 import io.jsonwebtoken.Jwts
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -12,10 +16,10 @@ import software.tice.wallet.attestation.responses.NonceResponse
 import java.security.KeyFactory
 import java.security.PrivateKey
 import java.security.PublicKey
-import java.security.Signature
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
 import java.util.*
+
 
 @Service
 class WalletApiService @Autowired constructor(
@@ -47,7 +51,7 @@ class WalletApiService @Autowired constructor(
             )
             walletRepository.save(newWallet)
         }
-        return NonceResponse(popNonce = popNonce, keyAttestationNonce = keyAttestationNonce )
+        return NonceResponse(popNonce = popNonce, keyAttestationNonce = keyAttestationNonce)
     }
 
     fun requestAttestation(requestAttestation: AttestationRequest, id: String): AttestationResponse {
@@ -57,29 +61,27 @@ class WalletApiService @Autowired constructor(
             .replace("-----END PRIVATE KEY-----", "")
 
         val existingWallet = walletRepository.findByWalletId(walletId)
-            ?: throw WalletNotFoundException("Wallet with id ${walletId} not found")
+            ?: throw WalletNotFoundException("Wallet with id $walletId not found")
 
         // <--- Start: check the PoP --->
         val publicKey: PublicKey = decodePublicKey(requestAttestation.attestationPublicKey)
-        val parts = requestAttestation.proofOfPossession.split(":")
-        if (parts.size != 2) {
-            throw IllegalArgumentException("Expected format 'nonce:signature'")
-        }
-        val (nonce, signatureBytes) = parts.map { Base64.getDecoder().decode(it) }
 
-        val signature = Signature.getInstance("SHA256withECDSA")
-        signature.initVerify(publicKey)
-        signature.update(nonce)
 
-        val isSignatureValid = signature.verify(signatureBytes)
-        if (!isSignatureValid) {
-            throw SecurityException("Invalid signature")
+        try {
+            val nonce: String? = Jwts.parser().verifyWith(publicKey).build()
+                .parseSignedClaims(requestAttestation.proofOfPossession).payload["nonce"] as? String
+
+            if (nonce != existingWallet.popNonce) {
+                throw PopVerificationException("Nonce mismatch")
+            }
+        } catch (e: JwtException) {
+            throw PopVerificationException("Signature invalid")
         }
+
 
         // <--- End: check the PoP --->
 
         // <--- End: check the request --->
-
 
 
         // <--- Start: throw away nonces and create random ID --->
@@ -94,7 +96,9 @@ class WalletApiService @Autowired constructor(
         // <--- Start: create walletAttestation --->
         val privateKey = privateKey?.let { decodePrivateKey(it) }
 
-        val walletAttestation: String = Jwts.builder().subject("Joe").claim("publicKey", requestAttestation.attestationPublicKey).claim("randomId", randomId).signWith(privateKey).compact()
+        val walletAttestation: String =
+            Jwts.builder().subject("Joe").claim("publicKey", requestAttestation.attestationPublicKey)
+                .claim("randomId", randomId).signWith(privateKey).compact()
         // <--- End: create walletAttestation --->
 
         return AttestationResponse(walletAttestation)
@@ -117,6 +121,6 @@ class WalletApiService @Autowired constructor(
         val keyBytes = Base64.getDecoder().decode(pem)
         val keySpec = PKCS8EncodedKeySpec(keyBytes)
         val keyFactory = KeyFactory.getInstance("EC")
-       return  keyFactory.generatePrivate(keySpec)
+        return keyFactory.generatePrivate(keySpec)
     }
 }
