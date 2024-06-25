@@ -1,4 +1,4 @@
-package wallet_server.attestation.responses
+package tice.software.wallet.attestation.responses
 
 data class NonceResponse(
     val popNonce: String,

@@ -1,15 +1,13 @@
-package wallet_server.attestation.services
+package tice.software.wallet.attestation.services
 
 import io.jsonwebtoken.Jwts
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.*
 import org.mockito.Mockito.verify
-import org.mockito.Mockito.`when`
-import wallet_server.attestation.config.EnvironmentConfig
-import wallet_server.attestation.repositories.UserEntity
-import wallet_server.attestation.repositories.UserRepository
-import wallet_server.attestation.requests.AttestationRequest
+import tice.software.wallet.attestation.repositories.UserEntity
+import tice.software.wallet.attestation.repositories.UserRepository
+import tice.software.wallet.attestation.requests.AttestationRequest
 import java.security.KeyPair
 import java.util.*
 import kotlin.test.assertEquals
@@ -20,22 +18,21 @@ internal class WalletApiServiceTests {
     @Mock
     private lateinit var userRepository: UserRepository
 
-    @Mock
-    private lateinit var environmentConfig: EnvironmentConfig
+    private lateinit var privateKey: String
 
-    @InjectMocks
     private lateinit var walletApiService: WalletApiService
 
     @Captor
     private lateinit var userCaptor: ArgumentCaptor<UserEntity>
 
     private val keyPair: KeyPair = Jwts.SIG.ES256.keyPair().build()
-    private val privateKey: String = Base64.getEncoder().encodeToString(keyPair.private.encoded)
+
 
     @BeforeEach
     fun setup() {
         MockitoAnnotations.openMocks(this)
-        `when`(environmentConfig.getPrivateKey()).thenReturn(privateKey)
+        privateKey = Base64.getEncoder().encodeToString(keyPair.private.encoded)
+        walletApiService = WalletApiService(privateKey, userRepository)
     }
 
     @Test
@@ -54,14 +51,14 @@ internal class WalletApiServiceTests {
 
     @Test
     fun `should return correct wallet attestation`() {
-        val request = AttestationRequest(attestationPublicKey = "PUBLIC_KEY", proofOfPossession = "POP", keyAttestation = "KEY_ATTESTATION", appAttestation = "APP_ATTESTATION")
+        val request = AttestationRequest("PUBLIC_KEY","POP","KEY_ATTESTATION", "APP_ATTESTATION")
         val walletInstanceId = "f74813c9-3435-4028-8e0c-018dd34d3b60"
 
         val response = walletApiService.requestAttestation(request, walletInstanceId)
 
-        val parsedClaims = Jwts.parser()
+        val parser = Jwts.parser()
             .verifyWith(keyPair.public)
             .build()
-        assert(parsedClaims.parseSignedClaims(response.walletAttestation).payload.subject.equals("Joe"))
+        assertEquals(parser.parseSignedClaims(response.walletAttestation).payload.subject, "Joe")
     }
 }

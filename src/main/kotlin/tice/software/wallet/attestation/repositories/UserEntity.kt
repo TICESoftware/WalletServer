@@ -1,4 +1,4 @@
-package wallet_server.attestation.repositories
+package tice.software.wallet.attestation.repositories
 
 import jakarta.persistence.*
 

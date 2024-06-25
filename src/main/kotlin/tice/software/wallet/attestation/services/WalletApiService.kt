@@ -1,27 +1,28 @@
-package wallet_server.attestation.services
+package tice.software.wallet.attestation.services
 
-import io.github.cdimascio.dotenv.Dotenv
 import io.jsonwebtoken.Jwts
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Configuration
 import org.springframework.stereotype.Service
-import wallet_server.attestation.repositories.UserEntity
-import wallet_server.attestation.repositories.UserRepository
-import wallet_server.attestation.requests.AttestationRequest
-import wallet_server.attestation.responses.AttestationResponse
-import wallet_server.attestation.responses.NonceResponse
+import tice.software.wallet.attestation.repositories.UserEntity
+import tice.software.wallet.attestation.repositories.UserRepository
+import tice.software.wallet.attestation.requests.AttestationRequest
+import tice.software.wallet.attestation.responses.AttestationResponse
+import tice.software.wallet.attestation.responses.NonceResponse
 import java.security.KeyFactory
 import java.security.spec.PKCS8EncodedKeySpec
 import java.util.*
-import wallet_server.attestation.config.EnvironmentConfig
 
 @Service
 class WalletApiService @Autowired constructor(
+    @Value("\${private.key}")
+    private val privateKey: String,
     private val userRepository: UserRepository,
-    private val environmentConfig: EnvironmentConfig
 
 ) {
     fun requestNonces(walletInstanceId: String): NonceResponse {
-        val (popNonce, keyAttestationNonce) = List(2) { java.util.UUID.randomUUID().toString() }
+        val (popNonce, keyAttestationNonce) = List(2) { UUID.randomUUID().toString() }
 
         val user = UserEntity(
             walletInstanceId = walletInstanceId,
@@ -35,10 +36,10 @@ class WalletApiService @Autowired constructor(
     }
 
     fun requestAttestation(requestAttestation: AttestationRequest, id: String): AttestationResponse {
-        val privateKey = environmentConfig.getPrivateKey()
+        val privateKey = privateKey
         val pem = privateKey
-            ?.replace("-----BEGIN PRIVATE KEY-----", "")
-            ?.replace("-----END PRIVATE KEY-----", "")
+            .replace("-----BEGIN PRIVATE KEY-----", "")
+            .replace("-----END PRIVATE KEY-----", "")
 
         val decodedKey = Base64.getDecoder().decode(pem)
 
