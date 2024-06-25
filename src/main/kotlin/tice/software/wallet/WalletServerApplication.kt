@@ -1,4 +1,4 @@
-package wallet_server
+package tice.software.wallet
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
