@@ -1,0 +1,20 @@
+services:
+  backend:
+    image: gradle:8-jdk21
+    volumes:
+      - ./:/app
+      - gradle-cache:/root/.gradle/caches
+    working_dir: /app
+    command: gradle bootRun --build-cache
+    env_file: .env
+    ports:
+      - ${DEPLOYMENT_PORT:-20080}:8080
+    healthcheck:
+      test: curl --silent --fail http://127.0.0.1:8080/actuator/health/readiness | grep UP || exit 1
+      interval: 10s
+      retries: 10
+      start_period: 60s
+      timeout: 3s
+
+volumes:
+  gradle-cache:
