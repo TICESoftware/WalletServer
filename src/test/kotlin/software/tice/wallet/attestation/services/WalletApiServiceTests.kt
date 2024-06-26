@@ -2,63 +2,150 @@ package software.tice.wallet.attestation.services
 
 import io.jsonwebtoken.Jwts
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.mockito.*
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.`when`
 import software.tice.wallet.attestation.repositories.WalletEntity
 import software.tice.wallet.attestation.repositories.WalletRepository
 import software.tice.wallet.attestation.requests.AttestationRequest
+import wallet_server.attestation.exceptions.PopVerificationException
+import wallet_server.attestation.exceptions.WalletNotFoundException
 import java.security.KeyPair
+import java.security.PrivateKey
 import java.util.*
+import java.util.UUID.randomUUID
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
+import kotlin.random.Random
 
 
 internal class WalletApiServiceTests {
-
     @Mock
-    private lateinit var userRepository: WalletRepository
-
-    private lateinit var privateKey: String
+    private lateinit var walletRepository: WalletRepository
 
     private lateinit var walletApiService: WalletApiService
 
-    @Captor
-    private lateinit var userCaptor: ArgumentCaptor<WalletEntity>
+    private lateinit var walletId: String
+
+    private lateinit var privateKey: PrivateKey
 
     private val keyPair: KeyPair = Jwts.SIG.ES256.keyPair().build()
 
+    private val internalWalletId: Long = Random.nextLong()
+
+    @Captor
+    private lateinit var walletCaptor: ArgumentCaptor<WalletEntity>
 
     @BeforeEach
     fun setup() {
         MockitoAnnotations.openMocks(this)
-        privateKey = Base64.getEncoder().encodeToString(keyPair.private.encoded)
-        walletApiService = WalletApiService(privateKey, userRepository)
+        walletId = randomUUID().toString()
+        privateKey = keyPair.private
+
+        walletApiService = WalletApiService(Base64.getEncoder().encodeToString(privateKey.encoded), walletRepository)
     }
 
-    @Test
-    fun `should return correct NonceResponse`() {
-        val walletInstanceId = "f74813c9-3435-4028-8e0c-018dd34d3b60"
+    @Nested
+    inner class RequestNoncesTests {
+        @Test
+        fun `should return correct NonceResponse and update existing user`() {
+            val existingWallet = WalletEntity(internalWalletId, walletId, "popNonce", "keyAttestation")
+            `when`(walletRepository.findByWalletId(walletId)).thenReturn(existingWallet)
 
-        val response = walletApiService.requestNonces(walletInstanceId)
+            val response = walletApiService.requestNonces(walletId)
 
-        verify(userRepository).save(userCaptor.capture())
-        val savedUser = userCaptor.value
-        assertEquals(walletInstanceId, savedUser.walletId)
-        assertEquals(response.popNonce, savedUser.popNonce)
-        assertEquals(response.keyAttestationNonce, savedUser.keyAttestationNonce)
+            verify(walletRepository).save(walletCaptor.capture())
+            val savedwallet = walletCaptor.value
+            assertEquals(internalWalletId, savedwallet.id)
+            assertEquals(walletId, savedwallet.walletId)
+            assertEquals(response.popNonce, savedwallet.popNonce)
+            assertEquals(response.keyAttestationNonce, savedwallet.keyAttestationNonce)
+        }
+
+        @Test
+        fun `should return correct NonceResponse and add new user`() {
+            `when`(walletRepository.findByWalletId(walletId)).thenReturn(null)
+
+            val response = walletApiService.requestNonces(walletId)
+
+            verify(walletRepository).save(walletCaptor.capture())
+            val newWallet = walletCaptor.value
+            assertNull(newWallet.id)
+            assertEquals(walletId, newWallet.walletId)
+            assertEquals(response.popNonce, newWallet.popNonce)
+            assertEquals(response.keyAttestationNonce, newWallet.keyAttestationNonce)
+
+        }
     }
 
+    @Nested
+    inner class RequestAttestationTests {
+        @Test
+        fun `should return correct wallet attestation`() {
+            val publicKey = Base64.getEncoder().encodeToString(keyPair.public.encoded)
+            val popNonce = randomUUID().toString()
+            val mockPop = Jwts.builder().claim("nonce", popNonce).signWith(privateKey).compact()
+            val existingWallet = WalletEntity(internalWalletId, walletId, popNonce, "keyAttestation")
+            `when`(walletRepository.findByWalletId(walletId)).thenReturn(existingWallet)
+            val request = AttestationRequest(publicKey, mockPop, "KEY_ATTESTATION", "APP_ATTESTATION")
 
-    @Test
-    fun `should return correct wallet attestation`() {
-        val request = AttestationRequest("PUBLIC_KEY","POP","KEY_ATTESTATION", "APP_ATTESTATION")
-        val walletInstanceId = "f74813c9-3435-4028-8e0c-018dd34d3b60"
+            val response = walletApiService.requestAttestation(request, walletId)
 
-        val response = walletApiService.requestAttestation(request, walletInstanceId)
+            verify(walletRepository).save(walletCaptor.capture())
+            val newWallet = walletCaptor.value
+            val claims = Jwts.parser().verifyWith(keyPair.public).build().parseSignedClaims(response.walletAttestation)
+            assertEquals(claims.payload.subject, "Joe")
+            assertEquals(claims.payload["publicKey"], publicKey)
+            assertNull(newWallet.popNonce)
+            assertNull(newWallet.keyAttestationNonce)
+        }
 
-        val parser = Jwts.parser()
-            .verifyWith(keyPair.public)
-            .build()
-        assertEquals(parser.parseSignedClaims(response.walletAttestation).payload.subject, "Joe")
+        @Test
+        fun `should throw WalletNotFoundException if wallet can not be found`() {
+            val publicKey = Base64.getEncoder().encodeToString(keyPair.public.encoded)
+            val request = AttestationRequest(publicKey, "POP", "KEY_ATTESTATION", "APP_ATTESTATION")
+            `when`(walletRepository.findByWalletId(walletId)).thenReturn(null)
+
+            val exception = assertThrows<WalletNotFoundException> {
+                walletApiService.requestAttestation(request, walletId)
+            }
+            assertEquals("Wallet with id $walletId not found", exception.message)
+        }
+
+        @Test
+        fun `should throw PopVerificationException if nonce does not match`() {
+            val publicKey = Base64.getEncoder().encodeToString(keyPair.public.encoded)
+            val popNonceOne = randomUUID().toString()
+            val popNonceTwo = randomUUID().toString()
+            val mockPop = Jwts.builder().claim("nonce", popNonceOne).signWith(privateKey).compact()
+            val existingWallet = WalletEntity(internalWalletId, walletId, popNonceTwo, "keyAttestation")
+            `when`(walletRepository.findByWalletId(walletId)).thenReturn(existingWallet)
+
+            val request = AttestationRequest(publicKey, mockPop, "KEY_ATTESTATION", "APP_ATTESTATION")
+
+            val exception = assertThrows<PopVerificationException> {
+                walletApiService.requestAttestation(request, walletId)
+            }
+            assertEquals("Nonce mismatch", exception.message)
+        }
+
+        @Test
+        fun `should throw PopVerificationException if signature is invalid`() {
+            val publicKey = Base64.getEncoder().encodeToString(keyPair.public.encoded)
+            val popNonce = randomUUID().toString()
+            val maliciousPrivateKey = Jwts.SIG.ES256.keyPair().build().private
+            val mockPop = Jwts.builder().claim("nonce", popNonce).signWith(maliciousPrivateKey).compact()
+            val existingWallet = WalletEntity(internalWalletId, walletId, popNonce, "keyAttestation")
+            `when`(walletRepository.findByWalletId(walletId)).thenReturn(existingWallet)
+            val request = AttestationRequest(publicKey, mockPop, "KEY_ATTESTATION", "APP_ATTESTATION")
+
+            val exception = assertThrows<PopVerificationException> {
+                walletApiService.requestAttestation(request, walletId)
+            }
+            assertEquals("Signature invalid", exception.message)
+        }
     }
 }
