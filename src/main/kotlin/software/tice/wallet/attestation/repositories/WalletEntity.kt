@@ -1,6 +1,7 @@
 package software.tice.wallet.attestation.repositories
 
 import jakarta.persistence.*
+import java.util.*
 
 
 @Entity(name = "users")

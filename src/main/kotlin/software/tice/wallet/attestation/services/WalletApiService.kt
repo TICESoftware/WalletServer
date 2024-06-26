@@ -1,8 +1,5 @@
 package software.tice.wallet.attestation.services
 
-import io.github.cdimascio.dotenv.Dotenv
-import io.jsonwebtoken.Claims
-import io.jsonwebtoken.Jws
 import io.jsonwebtoken.JwtException
 import io.jsonwebtoken.Jwts
 import org.springframework.beans.factory.annotation.Autowired
@@ -13,6 +10,8 @@ import software.tice.wallet.attestation.repositories.WalletRepository
 import software.tice.wallet.attestation.requests.AttestationRequest
 import software.tice.wallet.attestation.responses.AttestationResponse
 import software.tice.wallet.attestation.responses.NonceResponse
+import wallet_server.attestation.exceptions.PopVerificationException
+import wallet_server.attestation.exceptions.WalletNotFoundException
 import java.security.KeyFactory
 import java.security.PrivateKey
 import java.security.PublicKey
@@ -25,18 +24,13 @@ import java.util.*
 class WalletApiService @Autowired constructor(
     @Value("\${private.key}")
     private val privateKey: String,
-    private val userRepository: WalletRepository,
+    private val walletRepository: WalletRepository,
 
-) {
-    fun requestNonces(walletInstanceId: String): NonceResponse {
+    ) {
+    fun requestNonces(walletId: String): NonceResponse {
         val (popNonce, keyAttestationNonce) = List(2) { UUID.randomUUID().toString() }
 
-        val user = WalletEntity(
-            walletId = walletInstanceId,
-            popNonce = popNonce,
-            keyAttestationNonce = keyAttestationNonce,
-            id = null
-        )
+        val existingWallet = walletRepository.findByWalletId(walletId)
 
         if (existingWallet != null) {
             existingWallet.popNonce = popNonce
@@ -55,17 +49,11 @@ class WalletApiService @Autowired constructor(
     }
 
     fun requestAttestation(requestAttestation: AttestationRequest, id: String): AttestationResponse {
-        val privateKey = privateKey
-        val pem = privateKey
-            .replace("-----BEGIN PRIVATE KEY-----", "")
-            .replace("-----END PRIVATE KEY-----", "")
-
-        val existingWallet = walletRepository.findByWalletId(walletId)
-            ?: throw WalletNotFoundException("Wallet with id $walletId not found")
+        val existingWallet = walletRepository.findByWalletId(id)
+            ?: throw WalletNotFoundException("Wallet with id $id not found")
 
         // <--- Start: check the PoP --->
         val publicKey: PublicKey = decodePublicKey(requestAttestation.attestationPublicKey)
-
 
         try {
             val nonce: String? = Jwts.parser().verifyWith(publicKey).build()
@@ -94,7 +82,7 @@ class WalletApiService @Autowired constructor(
 
 
         // <--- Start: create walletAttestation --->
-        val privateKey = privateKey?.let { decodePrivateKey(it) }
+        val privateKey = decodePrivateKey(privateKey)
 
         val walletAttestation: String =
             Jwts.builder().subject("Joe").claim("publicKey", requestAttestation.attestationPublicKey)
