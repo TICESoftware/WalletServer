@@ -1,9 +1,9 @@
-package tice.software.wallet.attestation.controllers
+package software.tice.wallet.attestation.controllers
 
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import tice.software.wallet.attestation.requests.ValidationRequest
+import software.tice.wallet.attestation.requests.ValidationRequest
 
 @RestController
 @RequestMapping("attestation")

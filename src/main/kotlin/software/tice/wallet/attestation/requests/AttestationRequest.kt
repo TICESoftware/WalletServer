@@ -1,4 +1,4 @@
-package tice.software.wallet.attestation.requests
+package software.tice.wallet.attestation.requests
 
 data class AttestationRequest(
     val attestationPublicKey: String,
