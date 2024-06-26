@@ -39,7 +39,14 @@ jobs:
 
       - name: Run deploy commands on remote server
         run: |
-          ssh sshhost 'cd $TARGET_DIR && git fetch && git checkout main && git pull && bash check_env.sh && docker compose up -d --no-deps --build backend'
-          ssh sshhost 'df . | awk "NR==2{if(\$4<=20*1024*1024) { system(\"docker system prune -f\") } else { system(\"echo \\\"Enough space left. No need to prune docker.\\\"\") } }"'
-        env:
-          TARGET_DIR: ${{ inputs.production == true && 'WalletServer-production' || 'WalletServer-staging' }}
+          ssh sshhost << EOF
+            cd ${{ inputs.production == true && 'WalletServer-production' || 'WalletServer-staging' }}
+            git fetch
+            git checkout main
+            git pull
+            bash check_env.sh
+            docker compose up -d --no-deps --build backend
+          EOF
+
+      - name: Clean up disk space if necessary
+        run: ssh sshhost 'df . | awk "NR==2{if(\$4<=20*1024*1024) { system(\"docker system prune -f\") } else { system(\"echo \\\"Enough space left. No need to prune docker.\\\"\") } }"'
