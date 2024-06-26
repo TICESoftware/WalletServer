@@ -1,15 +1,14 @@
-package tice.software.wallet.attestation.services
+package software.tice.wallet.attestation.services
 
 import io.jsonwebtoken.Jwts
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.context.annotation.Configuration
 import org.springframework.stereotype.Service
-import tice.software.wallet.attestation.repositories.UserEntity
-import tice.software.wallet.attestation.repositories.UserRepository
-import tice.software.wallet.attestation.requests.AttestationRequest
-import tice.software.wallet.attestation.responses.AttestationResponse
-import tice.software.wallet.attestation.responses.NonceResponse
+import software.tice.wallet.attestation.repositories.UserEntity
+import software.tice.wallet.attestation.repositories.UserRepository
+import software.tice.wallet.attestation.requests.AttestationRequest
+import software.tice.wallet.attestation.responses.AttestationResponse
+import software.tice.wallet.attestation.responses.NonceResponse
 import java.security.KeyFactory
 import java.security.spec.PKCS8EncodedKeySpec
 import java.util.*

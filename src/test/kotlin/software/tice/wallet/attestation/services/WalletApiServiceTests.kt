@@ -1,13 +1,13 @@
-package tice.software.wallet.attestation.services
+package software.tice.wallet.attestation.services
 
 import io.jsonwebtoken.Jwts
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.*
 import org.mockito.Mockito.verify
-import tice.software.wallet.attestation.repositories.UserEntity
-import tice.software.wallet.attestation.repositories.UserRepository
-import tice.software.wallet.attestation.requests.AttestationRequest
+import software.tice.wallet.attestation.repositories.UserEntity
+import software.tice.wallet.attestation.repositories.UserRepository
+import software.tice.wallet.attestation.requests.AttestationRequest
 import java.security.KeyPair
 import java.util.*
 import kotlin.test.assertEquals

@@ -1,4 +1,4 @@
-package tice.software.wallet.attestation.repositories
+package software.tice.wallet.attestation.repositories
 
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository

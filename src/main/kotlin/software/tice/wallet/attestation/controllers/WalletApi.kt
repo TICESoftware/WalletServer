@@ -1,11 +1,11 @@
-package tice.software.wallet.attestation.controllers
+package software.tice.wallet.attestation.controllers
 
 import org.springframework.web.bind.annotation.*
-import tice.software.wallet.attestation.requests.AttestationRequest
-import tice.software.wallet.attestation.requests.NonceRequest
-import tice.software.wallet.attestation.responses.AttestationResponse
-import tice.software.wallet.attestation.responses.NonceResponse
-import tice.software.wallet.attestation.services.WalletApiService
+import software.tice.wallet.attestation.requests.AttestationRequest
+import software.tice.wallet.attestation.requests.NonceRequest
+import software.tice.wallet.attestation.responses.AttestationResponse
+import software.tice.wallet.attestation.responses.NonceResponse
+import software.tice.wallet.attestation.services.WalletApiService
 
 @RestController
 @RequestMapping("attestation")
