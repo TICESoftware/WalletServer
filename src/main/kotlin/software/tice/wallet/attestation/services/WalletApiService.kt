@@ -4,6 +4,7 @@ import io.jsonwebtoken.JwtException
 import io.jsonwebtoken.Jwts
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import software.tice.wallet.attestation.exceptions.DecodingFailedException
 import software.tice.wallet.attestation.repositories.WalletEntity
 import software.tice.wallet.attestation.repositories.WalletRepository
@@ -37,7 +38,7 @@ class WalletApiService @Autowired constructor(
             walletRepository.save(existingWallet)
         } else {
             val newWallet = WalletEntity(
-                walletId = walletId, popNonce = popNonce, keyAttestationNonce = keyAttestationNonce, id = null
+                walletId = walletId, popNonce = popNonce, keyAttestationNonce = keyAttestationNonce, id = null, randomId = null
             )
             walletRepository.save(newWallet)
         }
@@ -68,11 +69,14 @@ class WalletApiService @Autowired constructor(
         // <--- End: check the PoP --->
 
         // <--- Start: throw away nonces and create random ID --->
+        val randomId: String = UUID.randomUUID().toString()
+
+        existingWallet.randomId = randomId
         existingWallet.popNonce = null
         existingWallet.keyAttestationNonce = null
+
         walletRepository.save(existingWallet)
 
-        val randomId: String = UUID.randomUUID().toString()
         // <--- End: throw away nonces and create random ID --->
 
         // <--- Start: create walletAttestation --->

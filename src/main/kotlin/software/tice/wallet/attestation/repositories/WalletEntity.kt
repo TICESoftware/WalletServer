@@ -11,5 +11,6 @@ data class WalletEntity(
     var id: Long?,
     var walletId: String,
     var popNonce: String?,
-    var keyAttestationNonce: String?
+    var keyAttestationNonce: String?,
+    var randomId: String?
 )

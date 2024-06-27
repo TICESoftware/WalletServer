@@ -21,6 +21,7 @@ import java.util.UUID.randomUUID
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.random.Random
+import kotlin.test.assertNotNull
 
 
 internal class WalletApiServiceTests {
@@ -53,7 +54,7 @@ internal class WalletApiServiceTests {
     inner class RequestNoncesTests {
         @Test
         fun `should return correct NonceResponse and update existing user`() {
-            val existingWallet = WalletEntity(internalWalletId, walletId, "popNonce", "keyAttestation")
+            val existingWallet = WalletEntity(internalWalletId, walletId, "popNonce", "keyAttestation", randomId = null)
             `when`(walletRepository.findByWalletId(walletId)).thenReturn(existingWallet)
 
             val response = walletApiService.requestNonces(walletId)
@@ -89,7 +90,7 @@ internal class WalletApiServiceTests {
             val publicKey = Base64.getEncoder().encodeToString(keyPair.public.encoded)
             val popNonce = randomUUID().toString()
             val mockPop = Jwts.builder().claim("nonce", popNonce).signWith(privateKey).compact()
-            val existingWallet = WalletEntity(internalWalletId, walletId, popNonce, "keyAttestation")
+            val existingWallet = WalletEntity(internalWalletId, walletId, popNonce, "keyAttestation", randomId = null)
             `when`(walletRepository.findByWalletId(walletId)).thenReturn(existingWallet)
             val request = AttestationRequest(publicKey, mockPop, "KEY_ATTESTATION", "APP_ATTESTATION")
 
@@ -100,6 +101,7 @@ internal class WalletApiServiceTests {
             val claims = Jwts.parser().verifyWith(keyPair.public).build().parseSignedClaims(response.walletAttestation)
             assertEquals(claims.payload.subject, "Joe")
             assertEquals(claims.payload["publicKey"], publicKey)
+            assertNotNull(newWallet.randomId)
             assertNull(newWallet.popNonce)
             assertNull(newWallet.keyAttestationNonce)
         }
@@ -122,7 +124,7 @@ internal class WalletApiServiceTests {
             val corruptedPublicKey = "$publicKey???"
             val popNonce = randomUUID().toString()
             val mockPop = Jwts.builder().claim("nonce", popNonce).signWith(privateKey).compact()
-            val existingWallet = WalletEntity(internalWalletId, walletId, popNonce, "keyAttestation")
+            val existingWallet = WalletEntity(internalWalletId, walletId, popNonce, "keyAttestation", randomId = null)
             `when`(walletRepository.findByWalletId(walletId)).thenReturn(existingWallet)
             val request = AttestationRequest(corruptedPublicKey, mockPop, "KEY_ATTESTATION", "APP_ATTESTATION")
 
@@ -139,7 +141,7 @@ internal class WalletApiServiceTests {
             val popNonceOne = randomUUID().toString()
             val popNonceTwo = randomUUID().toString()
             val mockPop = Jwts.builder().claim("nonce", popNonceOne).signWith(privateKey).compact()
-            val existingWallet = WalletEntity(internalWalletId, walletId, popNonceTwo, "keyAttestation")
+            val existingWallet = WalletEntity(internalWalletId, walletId, popNonceTwo, "keyAttestation", randomId = null)
             `when`(walletRepository.findByWalletId(walletId)).thenReturn(existingWallet)
 
             val request = AttestationRequest(publicKey, mockPop, "KEY_ATTESTATION", "APP_ATTESTATION")
@@ -156,7 +158,7 @@ internal class WalletApiServiceTests {
             val popNonce = randomUUID().toString()
             val maliciousPrivateKey = Jwts.SIG.ES256.keyPair().build().private
             val mockPop = Jwts.builder().claim("nonce", popNonce).signWith(maliciousPrivateKey).compact()
-            val existingWallet = WalletEntity(internalWalletId, walletId, popNonce, "keyAttestation")
+            val existingWallet = WalletEntity(internalWalletId, walletId, popNonce, "keyAttestation", randomId = null)
             `when`(walletRepository.findByWalletId(walletId)).thenReturn(existingWallet)
             val request = AttestationRequest(publicKey, mockPop, "KEY_ATTESTATION", "APP_ATTESTATION")
 
