@@ -3,27 +3,25 @@ package software.tice.wallet.attestation.services
 import io.jsonwebtoken.JwtException
 import io.jsonwebtoken.Jwts
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
+import software.tice.wallet.attestation.exceptions.DecodingFailedException
 import software.tice.wallet.attestation.repositories.WalletEntity
 import software.tice.wallet.attestation.repositories.WalletRepository
 import software.tice.wallet.attestation.requests.AttestationRequest
 import software.tice.wallet.attestation.responses.AttestationResponse
 import software.tice.wallet.attestation.responses.NonceResponse
-import wallet_server.attestation.exceptions.PopVerificationException
-import wallet_server.attestation.exceptions.WalletNotFoundException
+import software.tice.wallet.attestation.exceptions.PopVerificationException
+import software.tice.wallet.attestation.exceptions.WalletNotFoundException
 import java.security.KeyFactory
 import java.security.PrivateKey
 import java.security.PublicKey
-import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
 import java.util.*
 
 
 @Service
 class WalletApiService @Autowired constructor(
-    @Value("\${private.key}")
-    private val privateKey: String,
+    private val privateKey: PrivateKey,
     private val walletRepository: WalletRepository,
 
     ) {
@@ -82,8 +80,6 @@ class WalletApiService @Autowired constructor(
 
 
         // <--- Start: create walletAttestation --->
-        val privateKey = decodePrivateKey(privateKey)
-
         val walletAttestation: String =
             Jwts.builder().subject("Joe").claim("publicKey", requestAttestation.attestationPublicKey)
                 .claim("randomId", randomId).signWith(privateKey).compact()
@@ -93,6 +89,7 @@ class WalletApiService @Autowired constructor(
     }
 
     fun decodePublicKey(key: String): PublicKey {
+
         val pem = key
             .replace("-----BEGIN PUBLIC KEY-----", "")
             .replace("-----END PUBLIC KEY-----", "")
@@ -102,13 +99,5 @@ class WalletApiService @Autowired constructor(
         return keyFactory.generatePublic(keySpec)
     }
 
-    fun decodePrivateKey(key: String): PrivateKey {
-        val pem = key
-            .replace("-----BEGIN PRIVATE KEY-----", "")
-            .replace("-----END PRIVATE KEY-----", "")
-        val keyBytes = Base64.getDecoder().decode(pem)
-        val keySpec = PKCS8EncodedKeySpec(keyBytes)
-        val keyFactory = KeyFactory.getInstance("EC")
-        return keyFactory.generatePrivate(keySpec)
-    }
+
 }

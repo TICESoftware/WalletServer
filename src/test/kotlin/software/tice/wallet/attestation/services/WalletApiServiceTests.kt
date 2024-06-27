@@ -45,7 +45,7 @@ internal class WalletApiServiceTests {
         walletId = randomUUID().toString()
         privateKey = keyPair.private
 
-        walletApiService = WalletApiService(Base64.getEncoder().encodeToString(privateKey.encoded), walletRepository)
+        walletApiService = WalletApiService(privateKey, walletRepository)
     }
 
     @Nested
