@@ -24,6 +24,7 @@ class WalletApiService @Autowired constructor(
     private val privateKey: PrivateKey,
     private val walletRepository: WalletRepository,
 
+
     ) {
     fun requestNonces(walletId: String): NonceResponse {
         val (popNonce, keyAttestationNonce) = List(2) { UUID.randomUUID().toString() }
@@ -36,10 +37,7 @@ class WalletApiService @Autowired constructor(
             walletRepository.save(existingWallet)
         } else {
             val newWallet = WalletEntity(
-                walletId = walletId,
-                popNonce = popNonce,
-                keyAttestationNonce = keyAttestationNonce,
-                id = null
+                walletId = walletId, popNonce = popNonce, keyAttestationNonce = keyAttestationNonce, id = null
             )
             walletRepository.save(newWallet)
         }
@@ -47,11 +45,15 @@ class WalletApiService @Autowired constructor(
     }
 
     fun requestAttestation(requestAttestation: AttestationRequest, id: String): AttestationResponse {
-        val existingWallet = walletRepository.findByWalletId(id)
-            ?: throw WalletNotFoundException("Wallet with id $id not found")
+        val existingWallet =
+            walletRepository.findByWalletId(id) ?: throw WalletNotFoundException("Wallet with id $id not found")
 
         // <--- Start: check the PoP --->
-        val publicKey: PublicKey = decodePublicKey(requestAttestation.attestationPublicKey)
+        val publicKey: PublicKey = try {
+            decodePublicKey(requestAttestation.attestationPublicKey)
+        } catch (e: Exception) {
+            throw DecodingFailedException("Public Key could not be decoded")
+        }
 
         try {
             val nonce: String? = Jwts.parser().verifyWith(publicKey).build()
@@ -63,12 +65,7 @@ class WalletApiService @Autowired constructor(
         } catch (e: JwtException) {
             throw PopVerificationException("Signature invalid")
         }
-
-
         // <--- End: check the PoP --->
-
-        // <--- End: check the request --->
-
 
         // <--- Start: throw away nonces and create random ID --->
         existingWallet.popNonce = null
@@ -77,7 +74,6 @@ class WalletApiService @Autowired constructor(
 
         val randomId: String = UUID.randomUUID().toString()
         // <--- End: throw away nonces and create random ID --->
-
 
         // <--- Start: create walletAttestation --->
         val walletAttestation: String =
@@ -89,15 +85,10 @@ class WalletApiService @Autowired constructor(
     }
 
     fun decodePublicKey(key: String): PublicKey {
-
-        val pem = key
-            .replace("-----BEGIN PUBLIC KEY-----", "")
-            .replace("-----END PUBLIC KEY-----", "")
-        val keyBytes = Base64.getDecoder().decode(pem)
-        val keySpec = X509EncodedKeySpec(keyBytes)
-        val keyFactory = KeyFactory.getInstance("EC")
-        return keyFactory.generatePublic(keySpec)
+            val pem = key.replace("-----BEGIN PUBLIC KEY-----", "").replace("-----END PUBLIC KEY-----", "")
+            val keyBytes = Base64.getDecoder().decode(pem)
+            val keySpec = X509EncodedKeySpec(keyBytes)
+            val keyFactory = KeyFactory.getInstance("EC")
+            return keyFactory.generatePublic(keySpec)
     }
-
-
 }

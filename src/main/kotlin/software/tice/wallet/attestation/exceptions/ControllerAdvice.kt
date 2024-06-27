@@ -15,4 +15,8 @@ class GlobalControllerAdvice {
     @ExceptionHandler(PopVerificationException::class)
     fun handlePopVerificationFailed(ex: PopVerificationException): ResponseEntity<String> =
         ResponseEntity(ex.message, HttpStatus.UNAUTHORIZED)
+
+    @ExceptionHandler(DecodingFailedException::class)
+    fun handleDecodingFailedException(ex: DecodingFailedException): ResponseEntity<String> =
+        ResponseEntity(ex.message, HttpStatus.BAD_REQUEST)
 }

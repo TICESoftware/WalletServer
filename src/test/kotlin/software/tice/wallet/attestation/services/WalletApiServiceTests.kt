@@ -8,6 +8,7 @@ import org.junit.jupiter.api.assertThrows
 import org.mockito.*
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
+import software.tice.wallet.attestation.exceptions.DecodingFailedException
 import software.tice.wallet.attestation.repositories.WalletEntity
 import software.tice.wallet.attestation.repositories.WalletRepository
 import software.tice.wallet.attestation.requests.AttestationRequest
@@ -114,6 +115,23 @@ internal class WalletApiServiceTests {
             }
             assertEquals("Wallet with id $walletId not found", exception.message)
         }
+
+        @Test
+        fun `should throw DecodingFailedException if public key can not be decoded`() {
+            val publicKey = Base64.getEncoder().encodeToString(keyPair.public.encoded)
+            val corruptedPublicKey = "$publicKey???"
+            val popNonce = randomUUID().toString()
+            val mockPop = Jwts.builder().claim("nonce", popNonce).signWith(privateKey).compact()
+            val existingWallet = WalletEntity(internalWalletId, walletId, popNonce, "keyAttestation")
+            `when`(walletRepository.findByWalletId(walletId)).thenReturn(existingWallet)
+            val request = AttestationRequest(corruptedPublicKey, mockPop, "KEY_ATTESTATION", "APP_ATTESTATION")
+
+            val exception = assertThrows<DecodingFailedException> {
+                walletApiService.requestAttestation(request, walletId)
+            }
+            assertEquals("Public Key could not be decoded", exception.message)
+        }
+
 
         @Test
         fun `should throw PopVerificationException if nonce does not match`() {
