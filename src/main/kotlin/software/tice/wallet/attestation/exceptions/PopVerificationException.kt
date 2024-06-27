@@ -1,3 +1,3 @@
-package wallet_server.attestation.exceptions
+package software.tice.wallet.attestation.exceptions
 
 class PopVerificationException(message: String) : RuntimeException(message)

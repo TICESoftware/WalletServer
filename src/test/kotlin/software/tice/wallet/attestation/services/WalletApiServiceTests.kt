@@ -11,8 +11,8 @@ import org.mockito.Mockito.`when`
 import software.tice.wallet.attestation.repositories.WalletEntity
 import software.tice.wallet.attestation.repositories.WalletRepository
 import software.tice.wallet.attestation.requests.AttestationRequest
-import wallet_server.attestation.exceptions.PopVerificationException
-import wallet_server.attestation.exceptions.WalletNotFoundException
+import software.tice.wallet.attestation.exceptions.PopVerificationException
+import software.tice.wallet.attestation.exceptions.WalletNotFoundException
 import java.security.KeyPair
 import java.security.PrivateKey
 import java.util.*
