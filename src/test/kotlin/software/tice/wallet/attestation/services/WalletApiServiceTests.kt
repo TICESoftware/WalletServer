@@ -3,8 +3,13 @@ package software.tice.wallet.attestation.services
 import io.jsonwebtoken.Jwts
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.*
 import org.mockito.Mockito.verify
+import org.mockito.junit.jupiter.MockitoExtension
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.test.context.ContextConfiguration
 import software.tice.wallet.attestation.repositories.UserEntity
 import software.tice.wallet.attestation.repositories.UserRepository
 import software.tice.wallet.attestation.requests.AttestationRequest
@@ -12,13 +17,13 @@ import java.security.KeyPair
 import java.util.*
 import kotlin.test.assertEquals
 
+@SpringBootTest
+@ExtendWith(MockitoExtension::class)
+@ContextConfiguration(classes = [UserRepository::class])
+class WalletApiServiceTests {
 
-internal class WalletApiServiceTests {
-
-    @Mock
+    @MockBean
     private lateinit var userRepository: UserRepository
-
-    private lateinit var privateKey: String
 
     private lateinit var walletApiService: WalletApiService
 
@@ -30,8 +35,7 @@ internal class WalletApiServiceTests {
 
     @BeforeEach
     fun setup() {
-        MockitoAnnotations.openMocks(this)
-        privateKey = Base64.getEncoder().encodeToString(keyPair.private.encoded)
+        val privateKey = Base64.getEncoder().encodeToString(keyPair.private.encoded)
         walletApiService = WalletApiService(privateKey, userRepository)
     }
 
