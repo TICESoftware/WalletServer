@@ -5,24 +5,26 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import org.mockito.*
+import org.mockito.ArgumentCaptor
+import org.mockito.Captor
+import org.mockito.Mock
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
+import org.mockito.MockitoAnnotations
 import software.tice.wallet.attestation.exceptions.DecodingFailedException
+import software.tice.wallet.attestation.exceptions.PopVerificationException
+import software.tice.wallet.attestation.exceptions.WalletNotFoundException
 import software.tice.wallet.attestation.repositories.WalletEntity
 import software.tice.wallet.attestation.repositories.WalletRepository
 import software.tice.wallet.attestation.requests.AttestationRequest
-import software.tice.wallet.attestation.exceptions.PopVerificationException
-import software.tice.wallet.attestation.exceptions.WalletNotFoundException
 import java.security.KeyPair
 import java.security.PrivateKey
-import java.util.*
+import java.util.Base64
 import java.util.UUID.randomUUID
-import kotlin.test.assertEquals
-import kotlin.test.assertNull
 import kotlin.random.Random
+import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
-
+import kotlin.test.assertNull
 
 internal class WalletApiServiceTests {
     @Mock
@@ -79,7 +81,6 @@ internal class WalletApiServiceTests {
             assertEquals(walletId, newWallet.walletId)
             assertEquals(response.popNonce, newWallet.popNonce)
             assertEquals(response.keyAttestationNonce, newWallet.keyAttestationNonce)
-
         }
     }
 
@@ -112,9 +113,10 @@ internal class WalletApiServiceTests {
             val request = AttestationRequest(publicKey, "POP", "KEY_ATTESTATION", "APP_ATTESTATION")
             `when`(walletRepository.findByWalletId(walletId)).thenReturn(null)
 
-            val exception = assertThrows<WalletNotFoundException> {
-                walletApiService.requestAttestation(request, walletId)
-            }
+            val exception =
+                assertThrows<WalletNotFoundException> {
+                    walletApiService.requestAttestation(request, walletId)
+                }
             assertEquals("Wallet with id $walletId not found", exception.message)
         }
 
@@ -128,12 +130,12 @@ internal class WalletApiServiceTests {
             `when`(walletRepository.findByWalletId(walletId)).thenReturn(existingWallet)
             val request = AttestationRequest(corruptedPublicKey, mockPop, "KEY_ATTESTATION", "APP_ATTESTATION")
 
-            val exception = assertThrows<DecodingFailedException> {
-                walletApiService.requestAttestation(request, walletId)
-            }
+            val exception =
+                assertThrows<DecodingFailedException> {
+                    walletApiService.requestAttestation(request, walletId)
+                }
             assertEquals("Public Key could not be decoded", exception.message)
         }
-
 
         @Test
         fun `should throw PopVerificationException if nonce does not match`() {
@@ -146,9 +148,10 @@ internal class WalletApiServiceTests {
 
             val request = AttestationRequest(publicKey, mockPop, "KEY_ATTESTATION", "APP_ATTESTATION")
 
-            val exception = assertThrows<PopVerificationException> {
-                walletApiService.requestAttestation(request, walletId)
-            }
+            val exception =
+                assertThrows<PopVerificationException> {
+                    walletApiService.requestAttestation(request, walletId)
+                }
             assertEquals("Nonce mismatch", exception.message)
         }
 
@@ -162,9 +165,10 @@ internal class WalletApiServiceTests {
             `when`(walletRepository.findByWalletId(walletId)).thenReturn(existingWallet)
             val request = AttestationRequest(publicKey, mockPop, "KEY_ATTESTATION", "APP_ATTESTATION")
 
-            val exception = assertThrows<PopVerificationException> {
-                walletApiService.requestAttestation(request, walletId)
-            }
+            val exception =
+                assertThrows<PopVerificationException> {
+                    walletApiService.requestAttestation(request, walletId)
+                }
             assertEquals("Signature invalid", exception.message)
         }
     }

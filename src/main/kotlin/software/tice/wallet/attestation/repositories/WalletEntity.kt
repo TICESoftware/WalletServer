@@ -1,8 +1,9 @@
 package software.tice.wallet.attestation.repositories
 
-import jakarta.persistence.*
-import java.util.*
-
+import jakarta.persistence.Entity
+import jakarta.persistence.GeneratedValue
+import jakarta.persistence.GenerationType
+import jakarta.persistence.Id
 
 @Entity(name = "users")
 data class WalletEntity(
@@ -12,5 +13,5 @@ data class WalletEntity(
     var walletId: String,
     var popNonce: String?,
     var keyAttestationNonce: String?,
-    var randomId: String?
+    var randomId: String?,
 )

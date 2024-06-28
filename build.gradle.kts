@@ -54,7 +54,7 @@ tasks.withType<Test> {
 
 spotless {
     kotlin {
-//        ktlint()
+        ktlint()
     }
     kotlinGradle {
         ktlint()
