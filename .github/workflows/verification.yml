@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate gradle wrapper
-        uses: gradle/actions/wrapper-validation@d211a39090cba0cdce485f2a0b1f28f39ccda0c9
+        uses: gradle/actions/wrapper-validation@dbbdc275be76ac10734476cc723d82dfe7ec6eda
 
   linting:
     name: 'Check formatting'
@@ -26,9 +26,8 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-          cache: gradle
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@dbbdc275be76ac10734476cc723d82dfe7ec6eda
       - name: Build with Gradle
         run: ./gradlew spotlessCheck
 
@@ -44,7 +43,7 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: gradle
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@dbbdc275be76ac10734476cc723d82dfe7ec6eda
       - name: Build with Gradle
         run: ./gradlew test
