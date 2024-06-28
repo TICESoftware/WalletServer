@@ -49,7 +49,7 @@ jobs:
             git checkout main
             git pull
             bash check_env.sh
-            docker compose up -d --no-deps --build backend
+            docker compose up -d --no-deps --force-recreate --wait --wait-timeout 100 backend
           EOF
 
       - name: Clean up disk space if necessary
