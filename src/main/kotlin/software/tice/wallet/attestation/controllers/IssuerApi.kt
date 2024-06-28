@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.*
 import software.tice.wallet.attestation.requests.ValidationRequest
 
 @RestController
-@RequestMapping("attestation")
+@RequestMapping("wallet")
 class IssuerApi {
 
     @PostMapping("/validation")

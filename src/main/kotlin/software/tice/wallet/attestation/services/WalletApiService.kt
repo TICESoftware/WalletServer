@@ -1,52 +1,98 @@
 package software.tice.wallet.attestation.services
 
+import io.jsonwebtoken.JwtException
 import io.jsonwebtoken.Jwts
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
-import software.tice.wallet.attestation.repositories.UserEntity
-import software.tice.wallet.attestation.repositories.UserRepository
+import org.springframework.transaction.annotation.Transactional
+import software.tice.wallet.attestation.exceptions.DecodingFailedException
+import software.tice.wallet.attestation.repositories.WalletEntity
+import software.tice.wallet.attestation.repositories.WalletRepository
 import software.tice.wallet.attestation.requests.AttestationRequest
 import software.tice.wallet.attestation.responses.AttestationResponse
 import software.tice.wallet.attestation.responses.NonceResponse
+import software.tice.wallet.attestation.exceptions.PopVerificationException
+import software.tice.wallet.attestation.exceptions.WalletNotFoundException
 import java.security.KeyFactory
-import java.security.spec.PKCS8EncodedKeySpec
+import java.security.PrivateKey
+import java.security.PublicKey
+import java.security.spec.X509EncodedKeySpec
 import java.util.*
+
 
 @Service
 class WalletApiService @Autowired constructor(
-    @Value("\${private.key}")
-    private val privateKey: String,
-    private val userRepository: UserRepository,
+    private val privateKey: PrivateKey,
+    private val walletRepository: WalletRepository,
 
-) {
-    fun requestNonces(walletInstanceId: String): NonceResponse {
+
+    ) {
+    fun requestNonces(walletId: String): NonceResponse {
         val (popNonce, keyAttestationNonce) = List(2) { UUID.randomUUID().toString() }
 
-        val user = UserEntity(
-            walletInstanceId = walletInstanceId,
-            popNonce = popNonce,
-            keyAttestationNonce = keyAttestationNonce,
-            id = null
-        )
+        val existingWallet = walletRepository.findByWalletId(walletId)
 
-        userRepository.save(user)
-        return NonceResponse(popNonce = popNonce, keyAttestationNonce = keyAttestationNonce )
+        if (existingWallet != null) {
+            existingWallet.popNonce = popNonce
+            existingWallet.keyAttestationNonce = keyAttestationNonce
+            walletRepository.save(existingWallet)
+        } else {
+            val newWallet = WalletEntity(
+                walletId = walletId, popNonce = popNonce, keyAttestationNonce = keyAttestationNonce, id = null, randomId = null
+            )
+            walletRepository.save(newWallet)
+        }
+        return NonceResponse(popNonce = popNonce, keyAttestationNonce = keyAttestationNonce)
     }
 
     fun requestAttestation(requestAttestation: AttestationRequest, id: String): AttestationResponse {
-        val privateKey = privateKey
-        val pem = privateKey
-            .replace("-----BEGIN PRIVATE KEY-----", "")
-            .replace("-----END PRIVATE KEY-----", "")
+        val existingWallet =
+            walletRepository.findByWalletId(id) ?: throw WalletNotFoundException("Wallet with id $id not found")
 
-        val decodedKey = Base64.getDecoder().decode(pem)
+        // <--- Start: check the PoP --->
+        val publicKey: PublicKey = try {
+            decodePublicKey(requestAttestation.attestationPublicKey)
+        } catch (e: Exception) {
+            throw DecodingFailedException("Public Key could not be decoded")
+        }
 
-        val keySpec = PKCS8EncodedKeySpec(decodedKey)
-        val keyFactory = KeyFactory.getInstance("EC")
-        val privateKeyReloaded = keyFactory.generatePrivate(keySpec)
+        try {
+            val nonce: String? = Jwts.parser().verifyWith(publicKey).build()
+                .parseSignedClaims(requestAttestation.proofOfPossession).payload["nonce"] as? String
 
-        val walletAttestation: String = Jwts.builder().subject("Joe").signWith(privateKeyReloaded).compact()
+            if (nonce != existingWallet.popNonce) {
+                throw PopVerificationException("Nonce mismatch")
+            }
+        } catch (e: JwtException) {
+            throw PopVerificationException("Signature invalid")
+        }
+        // <--- End: check the PoP --->
+
+        // <--- Start: throw away nonces and create random ID --->
+        val randomId: String = UUID.randomUUID().toString()
+
+        existingWallet.randomId = randomId
+        existingWallet.popNonce = null
+        existingWallet.keyAttestationNonce = null
+
+        walletRepository.save(existingWallet)
+
+        // <--- End: throw away nonces and create random ID --->
+
+        // <--- Start: create walletAttestation --->
+        val walletAttestation: String =
+            Jwts.builder().subject("Joe").claim("publicKey", requestAttestation.attestationPublicKey)
+                .claim("randomId", randomId).signWith(privateKey).compact()
+        // <--- End: create walletAttestation --->
+
         return AttestationResponse(walletAttestation)
+    }
+
+    fun decodePublicKey(key: String): PublicKey {
+            val pem = key.replace("-----BEGIN PUBLIC KEY-----", "").replace("-----END PUBLIC KEY-----", "")
+            val keyBytes = Base64.getDecoder().decode(pem)
+            val keySpec = X509EncodedKeySpec(keyBytes)
+            val keyFactory = KeyFactory.getInstance("EC")
+            return keyFactory.generatePublic(keySpec)
     }
 }
